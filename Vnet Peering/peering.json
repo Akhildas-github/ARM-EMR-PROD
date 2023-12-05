@@ -1,0 +1,89 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "existingHyperExecuteVirtualNetworkName": {
+      "type": "String",
+      "metadata": {
+        "description": "Set the HyperExecute VNet name"
+      }
+    },
+    "existingHyperExecuteVirtualNetworkResourceGroupName": {
+      "type": "String",
+      "metadata": {
+        "description": "Sets the HyperExecute VNet Resource group"
+      }
+    },
+    "existingRemoteVirtualNetworkName": {
+      "type": "String",
+      "metadata": {
+        "description": "Set the remote VNet name"
+      }
+    }
+  },
+  "variables": {
+    "resourceGroupName": "[resourceGroup().name]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "resourceGroup": "[parameters('existingHyperExecuteVirtualNetworkResourceGroupName')]",
+      "apiVersion": "2020-10-01",
+      "name": "[guid(parameters('existingHyperExecuteVirtualNetworkName'), parameters('existingHyperExecuteVirtualNetworkResourceGroupName'), 'peering')]",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {},
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+              "apiVersion": "2021-02-01",
+              "name": "[format('{0}/local-to-remote-vnet', parameters('existingHyperExecuteVirtualNetworkName'))]",
+              "properties": {
+                "allowVirtualNetworkAccess": true,
+                "allowForwardedTraffic": false,
+                "allowGatewayTransit": false,
+                "useRemoteGateways": false,
+                "remoteVirtualNetwork": {
+                  "id": "[resourceId(variables('resourceGroupName'), 'Microsoft.Network/virtualNetworks', parameters('existingRemoteVirtualNetworkName'))]"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "resourceGroup": "[parameters('existingRemoteVirtualNetworkResourceGroupName')]",
+      "apiVersion": "2020-10-01",
+      "name": "[guid(parameters('existingRemoteVirtualNetworkName'),variables('resourceGroupName'), 'peering')]",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {},
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+              "apiVersion": "2021-02-01",
+              "name": "[format('{0}/remote-to-local-vnet', variables('resourceGroupName'))]",
+              "properties": {
+                "allowVirtualNetworkAccess": true,
+                "allowForwardedTraffic": false,
+                "allowGatewayTransit": false,
+                "useRemoteGateways": false,
+                "remoteVirtualNetwork": {
+                  "id": "[resourceId(parameters('existingHyperExecuteVirtualNetworkResourceGroupName'), 'Microsoft.Network/virtualNetworks', parameters('existingHyperExecuteVirtualNetworkName'))]"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
